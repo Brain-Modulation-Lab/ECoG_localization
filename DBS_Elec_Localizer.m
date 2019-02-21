@@ -780,23 +780,23 @@ load(fullfile(pname,fname))
 
 axes(handles.ax1);
 
-if exist('skull')
-    if isfield(skull,'faces'), skull.tri=skull.faces; end
-elseif exist('skin')
-    skull=skin; clear skin
-    if isfield(skull,'faces'), skull.tri=skull.faces; end
-end
-if isfield(handles,'Skull')
-    if isfield(handles.Skull,'Hp'), delete(handles.Skull.Hp), end
-end
-
-s=size(skull.vert);
-if s(1)<s(2), skull.vert=skull.vert'; end
-s=size(skull.tri);
-if s(1)<s(2), skull.tri=skull.tri'; end
-
-a=[-1,0,0;0,-1,0;0,0,1];
-skull.vert = [skull.vert*a];
+% if exist('skull')
+%     if isfield(skull,'faces'), skull.tri=skull.faces; end
+% elseif exist('skin')
+%     skull=skin; clear skin
+%     if isfield(skull,'faces'), skull.tri=skull.faces; end
+% end
+% if isfield(handles,'Skull')
+%     if isfield(handles.Skull,'Hp'), delete(handles.Skull.Hp), end
+% end
+% 
+% s=size(skull.vert);
+% if s(1)<s(2), skull.vert=skull.vert'; end
+% s=size(skull.tri);
+% if s(1)<s(2), skull.tri=skull.tri'; end
+% 
+% a=[-1,0,0;0,-1,0;0,0,1];
+% skull.vert = [skull.vert*a];
 
 handles.Skull.Hp = patch('vertices',skull.vert,'faces',skull.tri(:,[1 3 2]),'facecolor',[.65 .65 .65],'edgecolor','none',...
 'facelighting', 'gouraud', 'specularstrength', .25);
@@ -1398,9 +1398,9 @@ disp('Choose PinTips');
 load(fullfile(pinPath,[PinTips,ext]))
 end
 handles.Cortex.hull = mask_indices;
-a=[-1,0,0;0,-1,0;0,0,1];
-skull.vert=skull.vert'; skull.tri=skull.tri';
-skull.vert = [skull.vert*a];
+% a=[-1,0,0;0,-1,0;0,0,1];
+% skull.vert=skull.vert'; skull.tri=skull.tri';
+% skull.vert = [skull.vert*a];
 
 handles.Cortex.Hp = patch('vertices',cortex.vert,'faces',cortex.tri(:,[1 3 2]),'facecolor',[1 .65 .65],'edgecolor','none',...
     'facelighting', 'gouraud', 'specularstrength', .25);

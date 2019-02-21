@@ -35,9 +35,12 @@ save([PATH_FREESURFER filesep 'Electrode_Locations\CortElecLocL_eq.mat'], 'CortE
 elec = reshape(cell2mat(CortElecLoc),3,length(CortElecLoc))';
 
 % % add columns to electrode table
-% electrode.nat_x = ones(size(electrode.id))*NaN;
-% electrode.nat_y = ones(size(electrode.id))*NaN;
-% electrode.nat_z = ones(size(electrode.id))*NaN;
+% if ~any(ismember({'nat_x','nat_y','nat_z'},electrode.Properties.VariableNames))
+%     electrode.nat_x(:) = nan;
+%     electrode.nat_y(:) = nan;
+%     electrode.nat_z(:) = nan;
+% end
+
 
 % add first 63 strip electrode coordinates to electrode table
 strip_no = 1;
