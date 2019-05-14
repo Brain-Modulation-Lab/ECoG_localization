@@ -1398,9 +1398,9 @@ disp('Choose PinTips');
 load(fullfile(pinPath,[PinTips,ext]))
 end
 handles.Cortex.hull = mask_indices;
-a=[-1,0,0;0,-1,0;0,0,1];
-skull.vert=skull.vert'; skull.tri=skull.tri';
-skull.vert = [skull.vert*a];
+% a=[-1,0,0;0,-1,0;0,0,1];
+% skull.vert=skull.vert'; skull.tri=skull.tri';
+% skull.vert = [skull.vert*a];
 
 handles.Cortex.Hp = patch('vertices',cortex.vert,'faces',cortex.tri(:,[1 3 2]),'facecolor',[1 .65 .65],'edgecolor','none',...
     'facelighting', 'gouraud', 'specularstrength', .25);
