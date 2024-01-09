@@ -87,9 +87,9 @@ handles.FluoroLocalizer.Status1=0;
 handles.FluoroLocalizer.emitter2nose = 650; % distance from  mm from nose to screen
 handles.FluoroLocalizer.emitter2screen = 990; % distance from  mm from nose to screen
 handles.FluoroLocalizer.width = 244; % width of fluoro in mm
-handles.FluoroLocalizer.fov_radius = 114; % radius of fluoro in mm
-handles.FluoroLocalizer.Landmarks = table();
-handles.FluoroLocalizer.LandmarksFileName = './sub-DM10XX_fluoro-landmarks.txt';
+
+handles.Landmarks = table(); % struct with all relevant information for automating the alignment process
+handles.Landmarks.FileName = './sub-DM10XX_fluoro-landmarks.txt';
 
 
 set(handles.ed_Cmd,'KeyReleaseFcn',@CmdKeyRelease)
@@ -630,7 +630,7 @@ set(handles.ax1,'CameraPosition',handles.Camera.cp,...
 'CameraTarget',handles.Camera.ct,...
 'CameraViewAngle',handles.Camera.cva,...
 'CameraUpVector',handles.Camera.uv)
-% set(handles.tx_XLoc,'string',num2str(CameraPosition.cp(1)));
+set(handles.tx_XLoc,'string',num2str(CameraPosition.cp(1)));
 
 guidata(hObject,handles)
 
@@ -1522,8 +1522,7 @@ set(handles.FidLocalizer.SEH2,'cdata',[1,0,0;1,0,0;0,0,1;0,0,1]);
 
 
 % populate the landmarks table with fiducial locations
-% handles.Landmarks = table(); 
-lm = handles.FluoroLocalizer.Landmarks;
+handles.Landmarks = table(); 
 nlm = []; % new landmark 
 nlm.coordframe = "recon"; % 'recon' or 'fluoro'
 for i = 1:height(fiducial_locations)
@@ -1532,10 +1531,10 @@ for i = 1:height(fiducial_locations)
     else nlm.hemi = "left"; end
     if nlm.pos(2)>0; nlm.loc_id = "pintip_front";
     else nlm.loc_id = "pintip_occ"; end
-    if isempty(lm)
-        lm = struct2table(nlm);
+    if isempty(handles.Landmarks)
+        handles.Landmarks = struct2table(nlm);
     else
-        lm = [lm; struct2table(nlm)];
+        handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
     end
 end
 % add dbslead_end and dbslead_mid
@@ -1544,33 +1543,30 @@ nlm.loc_id = "dbslead_bottom";
 elecpos = elecmatrix1;
 [~, is] = min(elecpos(:,3)); 
 nlm.pos = elecpos(is, :); 
-lm = [lm; struct2table(nlm)];
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
 nlm.loc_id = "dbslead_top"; 
 [~, is] = max(elecpos(:,3)); 
 nlm.pos = elecpos(is, :); 
-lm = [lm; struct2table(nlm)];
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
 nlm.loc_id = "dbslead_mid"; 
 [~, is] = min(abs(elecpos(:,3) - mean(elecpos(:,3)))); 
 nlm.pos = elecpos(is, :); 
-lm = [lm; struct2table(nlm)];
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
 
 nlm.hemi = "right"; 
 nlm.loc_id = "dbslead_bottom"; 
 elecpos = elecmatrix2;
 [~, is] = min(elecpos(:,3)); 
 nlm.pos = elecpos(is, :); 
-lm = [lm; struct2table(nlm)];
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
 nlm.loc_id = "dbslead_top"; 
 [~, is] = max(elecpos(:,3)); 
 nlm.pos = elecpos(is, :); 
-lm = [lm; struct2table(nlm)];
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
 nlm.loc_id = "dbslead_mid"; 
 [~, is] = min(abs(elecpos(:,3) - mean(elecpos(:,3)))); 
 nlm.pos = elecpos(is, :); 
-lm = [lm; struct2table(nlm)];
-
-handles.FluoroLocalizer.Landmarks = lm;
-
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)];
 
 
 axis equal
@@ -1594,7 +1590,7 @@ answer = str2num(answer{1});
 handles.FluoroLocalizer.emitter2nose = answer; 
 
 handles = mn_LoadFluoro_Callback(hObject, eventdata, handles); 
-% handles = plot_image_3d_space(hObject, eventdata, handles, []); 
+handles = plot_image_3d_space(hObject, eventdata, handles, []); 
 
 handles.Camera.cp = [-handles.FluoroLocalizer.emitter2nose, 0, 0];
 handles.Camera.ct = [0, 0, 0];
@@ -1604,13 +1600,13 @@ bt_ResetCamera_Callback(hObject, eventdata, handles);
 
 
 try
-lm_tbl_fname = handles.FluoroLocalizer.LandmarksFileName; 
+lm_tbl_fname = handles.Landmarks.FileName; 
 opts = detectImportOptions(lm_tbl_fname);
 opts = setvartype(opts, {'coordframe', 'hemi', 'loc_id'}, 'string');  %or 'char' if you prefer
 lm = readtable(lm_tbl_fname, opts); 
 lm.pos = [lm.pos_1 lm.pos_2 lm.pos_3];
 lm(:, {'pos_1', 'pos_2', 'pos_3'}) = []; 
-handles.FluoroLocalizer.Landmarks = lm; 
+handles.Landmarks = lm; 
 guidata(hObject, handles); 
 catch 
     fprintf('No landmarks table located\n'); 
@@ -1620,14 +1616,14 @@ end
 
 
 % if fluoro was marked at a different distance, 
-lm = handles.FluoroLocalizer.Landmarks;
+lm = handles.Landmarks;
 landmarks_fluoro_depth = mean(lm.pos(lm.coordframe=="fluoro", 1)); 
 fluoro_depth = handles.FluoroLocalizer.emitter2screen - handles.FluoroLocalizer.emitter2nose; 
 if abs(fluoro_depth - landmarks_fluoro_depth) > 5 
     warning("Depth of fluoro landmarks don't match distance. Removing fluoro landmarks from landmarks table.")
     lm(lm.coordframe=="fluoro", :) = []
 end
-handles.FluoroLocalizer.Landmarks = lm; 
+handles.Landmarks = lm; 
 guidata(hObject, handles); 
 
 
@@ -1701,15 +1697,12 @@ yImage = [seg1(:, 2) seg2(:, 2)];
 zImage = [seg1(:, 3) seg2(:, 3)]; 
 handles.FluoroLocalizer.hS_fluoro = surf(xImage,yImage,zImage,...    % hS: handle to the surface
      'CData',handles.Fl.I,...
-     'FaceColor','texturemap', 'FaceAlpha', 0.9);
+     'FaceColor','texturemap', 'FaceAlpha', 0.95);
 
 % plot a transparent mesh--this is required to be able to clck on the locations in the fluoro
 [z, y] = meshgrid(-(width/2):1:(width/2)); % Generate x and y data
 x = zeros(size(y, 1)) + xoff-1; % Generate z data
 handles.FluoroLocalizer.hS_stransparent = surf(x, y, z, 'FaceAlpha', 0, 'EdgeColor', 'none'); % hS: handle to the surface
-
-delete(findall(handles.ax1, 'type', 'light'))
-camlight(handles.ax1, 'headlight', 'infinite')
 
 guidata(hObject, handles)
 
@@ -1979,7 +1972,7 @@ nlm.coordframe = answer{1};
 nlm.hemi = answer{2};
 nlm.loc_id = answer{3};
 nlm.pos = pos;
-handles.FluoroLocalizer.Landmarks = [handles.FluoroLocalizer.Landmarks; struct2table(nlm)]; 
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)]; 
 
 
 % list = {'Fluoro_FR','Fluoro_FL','Fluoro_OR', 'Fluoro_OL',...                   
@@ -1996,7 +1989,7 @@ guidata(hObject, handles)
 h.Enable = 'off';
 
 fprintf('Created new landmark "%s"\n', answer{1}); 
-handles.FluoroLocalizer.Landmarks
+handles.Landmarks
 
 
 
@@ -2055,7 +2048,7 @@ nlm.coordframe = answer{1};
 nlm.hemi = answer{2};
 nlm.loc_id = answer{3};
 nlm.pos = pos;
-handles.FluoroLocalizer.Landmarks = [handles.FluoroLocalizer.Landmarks; struct2table(nlm)]; 
+handles.Landmarks = [handles.Landmarks; struct2table(nlm)]; 
 % 
 % list = {'Fluoro_FR','Fluoro_FL','Fluoro_OR', 'Fluoro_OL',...                   
 %         'Fluoro_DBS1L','Fluoro_DBS2L'};
@@ -2069,7 +2062,7 @@ scatter3(handles.ax1, pos(1), pos(2), pos(3),100, 'square', 'filled'); % plot 0,
 guidata(hObject, handles)
 
 fprintf('Created new landmark "%s"\n', answer{1}); 
-handles.FluoroLocalizer.Landmarks
+handles.Landmarks
 
 
 % function project_points(hObject, eventdata, handles)
@@ -2098,7 +2091,7 @@ function Button_Optimize_Callback(hObject, eventdata, handles)
 bt_SaveCamera_Callback(hObject, eventdata, handles)
 % % matched points if we know ID
 
-lm = handles.FluoroLocalizer.Landmarks;
+lm = handles.Landmarks;
 nlm = []; nlm.coordframe = 'fluoro'; nlm.hemi = "uncertain"; nlm.pos = [nan nan nan]; 
 if sum(lm.coordframe=="fluoro" & lm.loc_id=="pintip_front")<2
     nlm.loc_id = "pintip_front";
@@ -2120,22 +2113,22 @@ hemis_perm = [hemis([1 2]) hemis([1 2]);
               hemis([2 1]) hemis([1 2]); 
               hemis([1 2]) hemis([2 1]); 
               hemis([2 1]) hemis([2 1])]; 
-for perm_idx = 1:4
+for perm_idx = 1
 
 lm_recon = lm(lm.coordframe=="recon", :); 
 lm_fluoro = lm(lm.coordframe=="fluoro", :); 
 idxs = lm_fluoro.hemi=="uncertain" ;
 lm_fluoro.hemi(idxs) = hemis_perm(perm_idx, :); 
 lm_matched = join(lm_fluoro, lm_recon, 'Keys', {'hemi', 'loc_id'}); 
-% lm_matched_nomissing = rmmissing(lm_matched); 
-lm_matched_nomissing = (lm_matched); 
-h.landmarks_fluoro = lm_matched_nomissing.pos_lm_fluoro'; % in 3d space
-h.landmarks_recon = lm_matched_nomissing.pos_lm_recon'; % in 3d space
+lm_matched = rmmissing(lm_matched); 
+h.landmarks_fluoro = lm_matched.pos_lm_fluoro'; % in 3d space
+h.landmarks_recon = lm_matched.pos_lm_recon'; % in 3d space
 % OR--unmatched points
 % h.landmarks_fluoro = lm_fluoro.pos'; % in 3d space
 % h.landmarks_recon = lm_recon.pos'; % in 3d space
 
- % pad for extra dimension of homogenous coordinate matrices
+
+ % pad for extra dimension of rotation matrices
 h.landmarks_fluoro = padarray(h.landmarks_fluoro, [1 0], 1, 'post'); 
 h.landmarks_recon = padarray(h.landmarks_recon, [1 0], 1, 'post'); 
 
@@ -2146,13 +2139,7 @@ h.cam_upvec = [0; 0; 1; 1];
 fluoro_depth = handles.FluoroLocalizer.emitter2screen - ...
                handles.FluoroLocalizer.emitter2nose; % distance from camtarget to fluoro
 h.fluoro_norm = (h.cam_target - h.cam_pos); 
-h.fluoro_norm = h.fluoro_norm/norm(h.fluoro_norm);
-h.fluoro_origin = h.fluoro_norm*fluoro_depth - h.cam_target; 
-h.fluoro_norm(4) = 0; % don't translate normal vector to plane
-h.fluoro_origin(4) = 1; 
-
-% used in calculating distance for landmarks NOT in fluoro field of view 
-h.radius_of_view = handles.FluoroLocalizer.fov_radius;
+h.fluoro_origin = h.fluoro_norm/norm(h.fluoro_norm)*fluoro_depth - h.cam_target; 
 
 bt_ResetCamera_Callback(hObject, eventdata, handles); 
 i.cam_pos = [get(handles.ax1, 'CameraPosition')'; 1]; 
@@ -2165,7 +2152,7 @@ i.cam_upvec = [get(handles.ax1, 'CameraUpVector')'; 1];
 i.rotmat = cam2rigidtransmat(i.cam_pos(1:3), i.cam_target(1:3), i.cam_upvec(1:3));
 i.pyr = rotmat2angles(i.rotmat(1:3, 1:3)); 
 
-% Set parameters ranges for the optimization
+% 
 range_rot = 2; 
 range_trans = 100; 
 pitch = optimvar("pitch","LowerBound",-range_rot,"UpperBound",range_rot);
@@ -2238,7 +2225,7 @@ show(problem);
 % T = [T        [sol.tx; sol.ty; sol.tz]; 
 %      0 0 0     1];
 
-[cost, p, rigidtransmat, dist] = projection_cost_fcn(sol.pitch, sol.yaw, sol.roll, sol.tx, sol.ty, sol.tz, sol.alpha, h);
+[cost, p, rigidtransmat] = projection_cost_fcn(sol.pitch, sol.yaw, sol.roll, sol.tx, sol.ty, sol.tz, sol.alpha, h);
 % [cost, p, rigidtransmat] = projection_cost_fcn(pitch, yaw, roll, tx, ty, tz, alpha, h);
 handles = plot_image_3d_space(hObject, eventdata, handles, rigidtransmat); 
 set(handles.ax1, 'CameraPosition', p.cam_pos(1:3))
@@ -2257,14 +2244,13 @@ h_Sc(2) = scatter3(p.landmarks_recon_proj(1,:), ...
 perm_idx
 sol
 cost
-dist
-drawnow; shg; pause
+drawnow; shg
 fprintf('Optimization finished'); 
 delete(h_Sc); 
 
 end
 
- 
+
 
 
 
@@ -2275,7 +2261,7 @@ function pushbutton21_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-sfprintf('testing/debug here')
+fprintf('debug here')
 
 
 handles.Camera.cp = [-handles.FluoroLocalizer.emitter2nose, 0, 0];
@@ -2288,15 +2274,6 @@ bt_SaveCamera_Callback(hObject, eventdata, handles)
 
 
 plot_image_3d_space(hObject, eventdata, handles, [])
-% % plot circle to ensure estimate of fluoro field of view radius is correct
-% xo = 0; yo = 0; 
-% th = 0:pi/50:2*pi;
-% r = handles.FluoroLocalizer.fov_radius;
-% y = r * cos(th) + xo;
-% z = r * sin(th) + yo;
-% x = repmat(handles.FluoroLocalizer.emitter2screen - handles.FluoroLocalizer.emitter2nose, [1 numel(y)]);
-% h = plot3(x, y, z);
-
 
 if isfield(handles.FluoroLocalizer, 'hS_fluoro'); delete(handles.FluoroLocalizer.hS_fluoro); end
 if isfield(handles.FluoroLocalizer, 'hS_transparent'); delete(handles.FluoroLocalizer.hS_transparent); end
@@ -2348,8 +2325,8 @@ function mn_ExportFluoroLandmarks_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % ----- write landmarks
-lm_tbl_fname = handles.FluoroLocalizer.LandmarksFileName; 
-lm = handles.FluoroLocalizer.Landmarks; 
+lm_tbl_fname = handles.Landmarks.FileName; 
+lm = handles.Landmarks; 
 writetable(lm, lm_tbl_fname, 'Delimiter', '\t', 'FileType', 'text'); 
 
 

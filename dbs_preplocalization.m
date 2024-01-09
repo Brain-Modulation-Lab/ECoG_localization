@@ -10,8 +10,8 @@ cd(fsdirectory)
 % Check for Electrode_Locations Folder
 if ~exist([char(options.uifsdir) '/Electrode_Locations'])
     mkdir([char(options.uifsdir),'/Electrode_Locations']);
-% if ~exist([directory '\Electrode_Locations'])  % Windows
-%     mkdir([directory,'\Electrode_Locations']); % Windows
+% if ~exist([directory '\Electrode_locations'])  % Windows
+%     mkdir([directory,'\Electrode_locations']); % Windows
 end
 
 %%%%%%%%%%%% Cortex %%%%%%%%%%%%%%

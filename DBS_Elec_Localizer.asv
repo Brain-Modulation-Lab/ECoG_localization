@@ -2120,7 +2120,7 @@ hemis_perm = [hemis([1 2]) hemis([1 2]);
               hemis([2 1]) hemis([1 2]); 
               hemis([1 2]) hemis([2 1]); 
               hemis([2 1]) hemis([2 1])]; 
-for perm_idx = 1:4
+for perm_idx = 2
 
 lm_recon = lm(lm.coordframe=="recon", :); 
 lm_fluoro = lm(lm.coordframe=="fluoro", :); 
@@ -2288,15 +2288,13 @@ bt_SaveCamera_Callback(hObject, eventdata, handles)
 
 
 plot_image_3d_space(hObject, eventdata, handles, [])
-% % plot circle to ensure estimate of fluoro field of view radius is correct
-% xo = 0; yo = 0; 
-% th = 0:pi/50:2*pi;
-% r = handles.FluoroLocalizer.fov_radius;
-% y = r * cos(th) + xo;
-% z = r * sin(th) + yo;
-% x = repmat(handles.FluoroLocalizer.emitter2screen - handles.FluoroLocalizer.emitter2nose, [1 numel(y)]);
-% h = plot3(x, y, z);
-
+function h = circle(xo,oy,r)
+hold on
+th = 0:pi/50:2*pi;
+y = r * cos(th) + xo;
+y = r * sin(th) + yo;
+h = plot3(xunit, yunit);
+hold off
 
 if isfield(handles.FluoroLocalizer, 'hS_fluoro'); delete(handles.FluoroLocalizer.hS_fluoro); end
 if isfield(handles.FluoroLocalizer, 'hS_transparent'); delete(handles.FluoroLocalizer.hS_transparent); end

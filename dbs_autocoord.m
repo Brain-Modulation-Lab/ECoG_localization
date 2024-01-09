@@ -41,7 +41,8 @@ if options.striplocalize.do
         cd(char(options.uipatdirs))
         save('localizer_options.mat','options')
         cd(char(options.uifsdir))
-        DBS_Elec_Localizer
+        hGUI_dbs_elec_localizer = DBS_Elec_Localizer;
+        assignin('base', 'hGUI_dbs_elec_localizer', hGUI_dbs_elec_localizer);
     end
 end
 

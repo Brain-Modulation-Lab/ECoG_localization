@@ -1,0 +1,68 @@
+ function [cost, p, RoScaTra, dist] = projection_cost_fcn(pitch, yaw, roll, tx, ty, tz, alpha, h)
+% h = 'home' points
+% p = prime, new, posterior points from new camera angle
+
+Ro = angles2rotmat([pitch yaw roll]); % rotation matrix
+RoSca = alpha*Ro; % rotation, scale matrix
+RoScaTra = [RoSca     [tx; ty; tz]; % rotation, scale, translate matrix
+            0 0 0     1];
+
+
+% transform all coordinates into new 'prime' space 
+p.landmarks_fluoro =        RoScaTra*h.landmarks_fluoro; 
+% p.landmarks_recon =     RoScaTra*p.landmarks_recon; 
+p.fluoro_norm =             RoScaTra*h.fluoro_norm; 
+p.fluoro_origin =           RoScaTra*h.fluoro_origin; 
+p.cam_target =              RoScaTra*h.cam_target; 
+p.cam_pos =                 RoScaTra*h.cam_pos; 
+p.cam_upvec =                 RoScaTra*h.cam_upvec; 
+    
+% project onto new plane
+for ip = 1:size(h.landmarks_recon,2)
+p.landmarks_recon_proj(:,ip) = line_plane_intersection(h.landmarks_recon(1:3, ip)-p.cam_pos(1:3), ...
+                                            p.cam_pos(1:3), ...                          
+                                            p.fluoro_norm(1:3), ...
+                                            p.fluoro_origin(1:3));
+end
+
+% ------------ unmatched points
+% dist = pdist2(p.landmarks_fluoro(1:3,:)', p.landmarks_recon_proj(1:3, :)');
+% cost = sum(min(dist, [], 2)); 
+
+
+% --- OR ----- matched points
+% lm_fluoro_max = max(pdist(p.landmarks_fluoro(1:3,:))); 
+% lm_recon_max = max(pdist(p.landmarks_recon_proj(1:3, :))); 
+% cost_scale = abs(lm_fluoro_max - lm_recon_max); 
+% get dist for dbs tip--this should be weighted highly 
+% this is DANGEROUS--make sure the first row of landmarks is actually the
+% DBS lead
+% sgm = @(x, xoff, stretch) 1./(1+ exp(-stretch*(x - xoff))); 
+hill_fcn = @(x, n, halfmax) x.^n ./ (halfmax.^n + x.^n); 
+halfmax = 15; % meaningful distance where sgm will be 0.5 
+n = 1; % slope of hill fcn
+
+idxs_missing_fluoro = all(isnan(p.landmarks_fluoro), 1);
+% distance from point to edge of fluoro field of view
+dist_missing = h.radius_of_view*alpha - pdist2(p.landmarks_recon_proj(1:3, idxs_missing_fluoro)', p.fluoro_origin(1:3)');
+idxs_0 = dist_missing < 0; % no penalty for projected landmarks outside field of view
+
+dist_missing_activfcn = hill_fcn(abs(dist_missing), n, halfmax); 
+dist_missing_activfcn(idxs_0) = 0; 
+dist_missing(idxs_0) = 0; 
+
+
+dist = pdist2(p.landmarks_recon_proj(1:3, ~idxs_missing_fluoro)', p.landmarks_fluoro(1:3, ~idxs_missing_fluoro)'); 
+dist = diag(dist);
+dist_activfcn = hill_fcn(dist, n, halfmax); 
+
+dist = [dist; dist_missing]; 
+dist_activfcn = [dist_activfcn; dist_missing_activfcn]; 
+weights = ones(numel(dist_activfcn), 1); 
+weights(2) = 0.5; % downweight the superficial DBS landmark (this of course only works if the landmarks are sorted properly)
+cost = dot(weights, dist_activfcn); 
+
+
+ end
+
+
