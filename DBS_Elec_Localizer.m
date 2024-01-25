@@ -98,6 +98,7 @@ handles.FluoroLocalizer.LandmarksFileName = ['./sub-' handles.SubjectID '_fluoro
 handles.FluoroLocalizer.LandmarksNames = {'pintip_front', 'pintip_occ', 'dbslead_bottom', 'dbslead_top'};
 handles.FluoroLocalizer.OptimizationSolutionFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.tsv'];
 handles.FluoroLocalizer.OptimizationSolutionMATFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.mat'];
+handles.FluoroLocalizer.OptimizationSolutionFileName = ['./sub-' handles.SubjectID '_fluoro-landmarks.tsv'];
 
 
 set(handles.ed_Cmd,'KeyReleaseFcn',@CmdKeyRelease)
@@ -390,7 +391,17 @@ if strcmp(get(gcf,'SelectionType'), 'normal') %add contact on left click
         vert = vert(vert(:,1)<0,:);
     end
     
-    pos1=[linspace(pos(1,1),pos(2,1),5000)', linspace(pos(1,2),pos(2,2),5000)', linspace(pos(1,3),pos(2,3),5000)'];
+    lm = handles.FluoroLocalizer.Landmarks;
+    lm = lm(startsWith(lm.name, "ecog"), :);
+    lm = sortrows(lm, 'name');
+    cp = get(handles.ax1, 'CameraPosition'); 
+    for ielec = 1:height(lm)
+        pos = lm.sol_pos(ielec, :); 
+    pos1 = [linspace(pos(1), cp(1), 5000); 
+            linspace(pos(2), cp(2), 5000); 
+            linspace(pos(3), cp(3), 5000);]';
+
+%     pos1=[linspace(pos(1,1),pos(2,1),5000)', linspace(pos(1,2),pos(2,2),5000)', linspace(pos(1,3),pos(2,3),5000)'];
     dst = single(pdist2(vert,pos1));
     mi = find(min(dst,[],2)<dthr); %Find vertices within dthr of our line
     vert2 = vert(mi,:);
@@ -449,9 +460,19 @@ if strcmp(get(gcf,'SelectionType'), 'normal') %add contact on left click
     % colors
 %     handles.CortLocalizer.CEH(handles.CortLocalizer.numelec)=plot3(epos(1),epos(2),epos(3),'.','MarkerSize',20,'Color',col( coli( handles.CortLocalizer.numelec ),:) );
     handles.CortLocalizer.CEH(handles.CortLocalizer.numelec)=plot3(epos(1),epos(2),epos(3),'.','MarkerSize',20,'Color','b' );
-    
+    drawnow
+
+    nlm = []; 
+    nlm.coordframe = "recon"; 
+    nlm.sol_pos = epos; 
+    nlm.pos = [nan nan nan]; 
+    nlm.hemi = lm.hemi(ielec); 
+    nlm.name = lm.name(ielec); 
+    handles.FluoroLocalizer.Landmarks = [handles.FluoroLocalizer.Landmarks; struct2table(nlm)]; 
     % Witek debug
     fprintf('... contact %d drawn.\n', length(handles.CortLocalizer.ElecLoc))
+
+    end
 else %delete last contact on right click
     if ~isempty(handles.CortLocalizer.ElecLoc)
         delete(handles.CortLocalizer.CEH(handles.CortLocalizer.numelec));
@@ -508,19 +529,21 @@ function bt_CoRegCort1_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles.CortLocalizer.ax1ch=[handles.ax1;get(handles.ax1,'children')];
-if handles.CortLocalizer.Status1==0
-    axes(handles.ax1)
-    set(handles.CortLocalizer.ax1ch,'ButtonDownFcn',@DrawElecLine)
-    handles.CortLocalizer.Status1=1;
-    set(handles.tx_LocMode,'string','Cort Localizer Mode ON','ForegroundColor',[1,0,0])
-    set(handles.figure1,'pointer','crosshair')
-elseif handles.CortLocalizer.Status1==1
-    set(handles.CortLocalizer.ax1ch,'ButtonDownFcn',[]);
-    handles.CortLocalizer.Status1=0;
-    set(handles.tx_LocMode,'string','Cort Localizer Mode OFF','ForegroundColor',[0,0,0])
-    set(handles.figure1,'pointer','arrow')
-end
+DrawElecLine(hObject, eventdata, handles)
+
+% handles.CortLocalizer.ax1ch=[handles.ax1;get(handles.ax1,'children')];
+% if handles.CortLocalizer.Status1==0
+%     axes(handles.ax1)
+%     set(handles.CortLocalizer.ax1ch,'ButtonDownFcn',@DrawElecLine)
+%     handles.CortLocalizer.Status1=1;
+%     set(handles.tx_LocMode,'string','Cort Localizer Mode ON','ForegroundColor',[1,0,0])
+%     set(handles.figure1,'pointer','crosshair')
+% elseif handles.CortLocalizer.Status1==1
+%     set(handles.CortLocalizer.ax1ch,'ButtonDownFcn',[]);
+%     handles.CortLocalizer.Status1=0;
+%     set(handles.tx_LocMode,'string','Cort Localizer Mode OFF','ForegroundColor',[0,0,0])
+%     set(handles.figure1,'pointer','arrow')
+% end
 
 guidata(hObject,handles)
 
@@ -2138,6 +2161,7 @@ hemis_perm = [hemis([1 2]) hemis([1 2]);
               hemis([2 1]) hemis([1 2]); 
               hemis([1 2]) hemis([2 1]); 
               hemis([2 1]) hemis([2 1])]; 
+% perms = []; 
 for perm_idx = 4:-1:1
 
 lm_recon = lm(lm.coordframe=="recon", :); 
@@ -2285,20 +2309,32 @@ dist
 perm_idx
 drawnow; shg; 
 
-answer = questdlg('Continue searching? Click "No" if you are satisfied with this optimization and want to save the results. ');
-if answer == "No"
-    save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
-    lm_matched.sol_landmarks_recon_proj = p.landmarks_recon_proj';
-    lm_matched.sol_landmarks_fluoro = p.landmarks_fluoro';
-    lm_matched.sol_dist = dist; 
-    writetable(lm_matched, ...
-        handles.FluoroLocalizer.OptimizationSolutionFileName, ...
-        'Delimiter', '\t', 'FileType', 'text');
-    fprintf('Optimization finished\n');
-    break
-elseif answer == "Cancel"
-    delete(h_validate); 
-    break
+answer = questdlg('Continue searching?', '', ...
+    'Continue searching', 'Stop search and save results', 'Cancel', ...
+    'Continue searching');
+switch answer
+    case "Continue searching"
+        % continue
+    case "Stop search and save results"
+        save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
+        lm_matched.sol_landmarks_recon_proj = p.landmarks_recon_proj';
+        lm_matched.sol_landmarks_fluoro = p.landmarks_fluoro';
+        lm_matched.sol_dist = dist;
+        writetable(lm_matched, ...
+            handles.FluoroLocalizer.OptimizationSolutionFileName, ...
+            'Delimiter', '\t', 'FileType', 'text');
+        fprintf('Optimization finished\n');
+
+        % save fluoro positions 
+        lm = handles.FluoroLocalizer.Landmarks;
+        lm.sol_pos = (affinetransmat*[lm.pos'; ones([1 width(lm.pos')])])';
+        lm.sol_pos = lm.sol_pos(:, 1:3); 
+        handles.FluoroLocalizer.Landmarks = lm;
+        guidata(hObject, handles)
+        break
+    case "Cancel"
+        delete(h_validate);
+        break
 end
 
 delete(h_validate); 
