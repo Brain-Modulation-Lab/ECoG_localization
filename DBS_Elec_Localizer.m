@@ -98,7 +98,7 @@ handles.FluoroLocalizer.LandmarksFileName = ['./sub-' handles.SubjectID '_fluoro
 handles.FluoroLocalizer.LandmarksNames = {'pintip_front', 'pintip_occ', 'dbslead_bottom', 'dbslead_top'};
 handles.FluoroLocalizer.OptimizationSolutionFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.tsv'];
 handles.FluoroLocalizer.OptimizationSolutionMATFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.mat'];
-handles.FluoroLocalizer.OptimizationSolutionFileName = ['./sub-' handles.SubjectID '_fluoro-landmarks.tsv'];
+handles.FluoroLocalizer.OptimizationSolutionElectrodesFileName = ['./sub-' handles.SubjectID '_optimized-electrodes.tsv'];
 
 
 set(handles.ed_Cmd,'KeyReleaseFcn',@CmdKeyRelease)
@@ -395,82 +395,83 @@ if strcmp(get(gcf,'SelectionType'), 'normal') %add contact on left click
     lm = lm(startsWith(lm.name, "ecog"), :);
     lm = sortrows(lm, 'name');
     cp = get(handles.ax1, 'CameraPosition'); 
+
     for ielec = 1:height(lm)
-        pos = lm.sol_pos(ielec, :); 
-    pos1 = [linspace(pos(1), cp(1), 5000); 
-            linspace(pos(2), cp(2), 5000); 
-            linspace(pos(3), cp(3), 5000);]';
+        pos = lm.sol_pos(ielec, :);
+        pos1 = [linspace(pos(1), cp(1), 5000);
+                linspace(pos(2), cp(2), 5000);
+                linspace(pos(3), cp(3), 5000);]';
 
-%     pos1=[linspace(pos(1,1),pos(2,1),5000)', linspace(pos(1,2),pos(2,2),5000)', linspace(pos(1,3),pos(2,3),5000)'];
-    dst = single(pdist2(vert,pos1));
-    mi = find(min(dst,[],2)<dthr); %Find vertices within dthr of our line
-    vert2 = vert(mi,:);
-    [~,mi2] = max(abs(vert2(:,1)));
-    epos = vert2(mi2,:);
-    
-    
-    % %---Orthogonal Distance Method
-    % campos=get(gca,'CameraPosition');
-    % mag=@(A) sqrt( sum(A.^2) );
-    % vert0=vert;
-    % tmp=bsxfun(@minus,pos,campos);
-    % for i=1:2
-    %     d(i)=mag(tmp(i,:));
-    % end
-    % [~,i1]=min(d);
-    % [~,i2]=max(d);
-    % O=pos(i1,:);
-    % B=pos(i2,:)-O;%Move B so O is origin
-    %
-    % vert=bsxfun(@minus,vert,O);%Move verts so O is origin
-    %
-    % fc = @(A,B) sqrt( mag(A)^2 - ( dot(A,B) / mag(B) )^2   );
-    %
-    % A=num2cell(vert,2);
-    % B1=num2cell( repmat(B,size(A,1),1), 2);
-    %
-    % c=cellfun(fc,A,B1);
-    %
-    % odthr=2; %MUST CHANGE THRESHOLD TO ACTUAL DISTANCE RATHER THAN PIXELS;
-    % ci=find(c<odthr);
-    %
-    %
-    % tmp=num2cell(vert(ci,:),2);
-    % tmp=cellfun(mag,tmp);
-    % [~,ci2]=min(tmp);
-    %
-    % tmp=vert0(ci(ci2),:);
-    % for i=1:3
-    %    tmp1(:,i)=linspace(pos(1,i),pos(2,i),1000);
-    % end
-    %
-    % [~,mi]=min(cellfun(mag,num2cell(bsxfun(@minus,tmp1,tmp),2)));
-    % epos=tmp1(mi,:);
-    
-    colormap jet
-    col=colormap;
-    colormap gray
-    coldr=round(length(col)/8);
-    col=col(3:17:end-3,:);
-    
-    handles.CortLocalizer.numelec = handles.CortLocalizer.numelec + 1;
-    handles.CortLocalizer.ElecLocCort{handles.CortLocalizer.numelec}=epos;
-    coli=repmat(1:length(col),1,10);
-    % Witek edit: draw all electrodes in blue instead of cycling through
-    % colors
-%     handles.CortLocalizer.CEH(handles.CortLocalizer.numelec)=plot3(epos(1),epos(2),epos(3),'.','MarkerSize',20,'Color',col( coli( handles.CortLocalizer.numelec ),:) );
-    handles.CortLocalizer.CEH(handles.CortLocalizer.numelec)=plot3(epos(1),epos(2),epos(3),'.','MarkerSize',20,'Color','b' );
-    drawnow
+        %     pos1=[linspace(pos(1,1),pos(2,1),5000)', linspace(pos(1,2),pos(2,2),5000)', linspace(pos(1,3),pos(2,3),5000)'];
+        dst = single(pdist2(vert,pos1));
+        mi = find(min(dst,[],2)<dthr); %Find vertices within dthr of our line
+        vert2 = vert(mi,:);
+        [~,mi2] = max(abs(vert2(:,1)));
+        epos = vert2(mi2,:);
 
-    nlm = []; 
-    nlm.coordframe = "recon"; 
-    nlm.sol_pos = epos; 
-    nlm.pos = [nan nan nan]; 
-    nlm.hemi = lm.hemi(ielec); 
-    nlm.name = lm.name(ielec); 
-    handles.FluoroLocalizer.Landmarks = [handles.FluoroLocalizer.Landmarks; struct2table(nlm)]; 
-    % Witek debug
-    fprintf('... contact %d drawn.\n', length(handles.CortLocalizer.ElecLoc))
+
+        % %---Orthogonal Distance Method
+        % campos=get(gca,'CameraPosition');
+        % mag=@(A) sqrt( sum(A.^2) );
+        % vert0=vert;
+        % tmp=bsxfun(@minus,pos,campos);
+        % for i=1:2
+        %     d(i)=mag(tmp(i,:));
+        % end
+        % [~,i1]=min(d);
+        % [~,i2]=max(d);
+        % O=pos(i1,:);
+        % B=pos(i2,:)-O;%Move B so O is origin
+        %
+        % vert=bsxfun(@minus,vert,O);%Move verts so O is origin
+        %
+        % fc = @(A,B) sqrt( mag(A)^2 - ( dot(A,B) / mag(B) )^2   );
+        %
+        % A=num2cell(vert,2);
+        % B1=num2cell( repmat(B,size(A,1),1), 2);
+        %
+        % c=cellfun(fc,A,B1);
+        %
+        % odthr=2; %MUST CHANGE THRESHOLD TO ACTUAL DISTANCE RATHER THAN PIXELS;
+        % ci=find(c<odthr);
+        %
+        %
+        % tmp=num2cell(vert(ci,:),2);
+        % tmp=cellfun(mag,tmp);
+        % [~,ci2]=min(tmp);
+        %
+        % tmp=vert0(ci(ci2),:);
+        % for i=1:3
+        %    tmp1(:,i)=linspace(pos(1,i),pos(2,i),1000);
+        % end
+        %
+        % [~,mi]=min(cellfun(mag,num2cell(bsxfun(@minus,tmp1,tmp),2)));
+        % epos=tmp1(mi,:);
+
+        colormap jet
+        col=colormap;
+        colormap gray
+        coldr=round(length(col)/8);
+        col=col(3:17:end-3,:);
+
+        handles.CortLocalizer.numelec = handles.CortLocalizer.numelec + 1;
+        handles.CortLocalizer.ElecLocCort{handles.CortLocalizer.numelec}=epos;
+        coli=repmat(1:length(col),1,10);
+        % Witek edit: draw all electrodes in blue instead of cycling through
+        % colors
+        %     handles.CortLocalizer.CEH(handles.CortLocalizer.numelec)=plot3(epos(1),epos(2),epos(3),'.','MarkerSize',20,'Color',col( coli( handles.CortLocalizer.numelec ),:) );
+        handles.CortLocalizer.CEH(handles.CortLocalizer.numelec)=plot3(handles.ax1, epos(1),epos(2),epos(3),'.','MarkerSize',20,'Color','b' );
+        drawnow
+
+        nlm = [];
+        nlm.coordframe = "recon";
+        nlm.sol_pos = epos;
+        nlm.pos = [nan nan nan];
+        nlm.hemi = lm.hemi(ielec);
+        nlm.name = lm.name(ielec);
+        handles.FluoroLocalizer.Landmarks = [handles.FluoroLocalizer.Landmarks; struct2table(nlm)];
+        % Witek debug
+        fprintf('... contact %d drawn.\n', length(handles.CortLocalizer.ElecLoc))
 
     end
 else %delete last contact on right click
@@ -487,7 +488,9 @@ else %delete last contact on right click
         fprintf('... no contacts to delete.\n')
     end
 end
+
 guidata(hObject,handles)
+fprintf('Finished projecting electrodes \n')
 
 
 % --- Executes on button press in bt_ResetCamera.
@@ -504,7 +507,7 @@ guidata(hObject,handles)
 
 
 % --- Executes on button press in bt_SaveCamera.
-function cam = bt_SaveCamera_Callback(hObject, eventdata, handles)
+function handles = bt_SaveCamera_Callback(hObject, eventdata, handles)
 % hObject    handle to bt_SaveCamera (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -544,8 +547,7 @@ DrawElecLine(hObject, eventdata, handles)
 %     set(handles.tx_LocMode,'string','Cort Localizer Mode OFF','ForegroundColor',[0,0,0])
 %     set(handles.figure1,'pointer','arrow')
 % end
-
-guidata(hObject,handles)
+% guidata(hObject,handles)
 
 
 % --- Executes on button press in bt_CoRegCort2.
@@ -758,12 +760,20 @@ function mn_ExpElCoord_Callback(hObject, eventdata, handles)
 a=1;
 CortElecLoc=handles.CortLocalizer.ElecLocCort;
 
-if handles.SurfFlip == 1
-    cfcn = @(A) [A(1)*-1, A(2), A(3)];
-    CortElecLoc = cellfun(cfcn, CortElecLoc,'uniformoutput',false);
-end
-[fname, pname] = uiputfile('*.mat', 'Export Electrode Locs to:');
-save(fullfile(pname,fname),'CortElecLoc')
+% if handles.SurfFlip == 1
+%     cfcn = @(A) [A(1)*-1, A(2), A(3)];
+%     CortElecLoc = cellfun(cfcn, CortElecLoc,'uniformoutput',false);
+% end
+% [fname, pname] = uiputfile('*.mat', 'Export Electrode Locs to:');
+% save(fullfile(pname,fname),'CortElecLoc')
+
+
+% ----- write landmarks
+lm_tbl_fname = handles.FluoroLocalizer.OptimizationSolutionElectrodesFileName; 
+lm = handles.FluoroLocalizer.Landmarks; 
+lm = lm(lm.coordframe=="recon", :);
+writetable(lm, lm_tbl_fname, 'Delimiter', '\t', 'FileType', 'text'); 
+f = msgbox("Saved successfully!");
 
 
 
@@ -2134,7 +2144,9 @@ function Button_Optimize_Callback(hObject, eventdata, handles)
 % p for 'prime' 
 
 
-bt_SaveCamera_Callback(hObject, eventdata, handles)
+% handles = bt_SaveCamera_Callback(hObject, eventdata, handles);
+bt_SaveCamera_Callback(hObject, eventdata, handles);
+
 % % matched points if we know ID
 
 lm = unique(handles.FluoroLocalizer.Landmarks);
@@ -2214,8 +2226,8 @@ roll = optimvar("roll","LowerBound",-range_rot,"UpperBound",range_rot);
 tx = optimvar("tx","LowerBound",-range_trans,"UpperBound",range_trans);
 ty = optimvar("ty","LowerBound",-range_trans,"UpperBound",range_trans);
 tz = optimvar("tz","LowerBound",-range_trans,"UpperBound",range_trans);
-alpha = optimvar("alpha","LowerBound", 0.2,"UpperBound",5);
-% alpha = 1; 
+% alpha = optimvar("alpha","LowerBound", 0.8,"UpperBound",1.2);
+alpha = 1; 
 
 
 % % % -------- test initial value--------
@@ -2242,7 +2254,7 @@ alpha = optimvar("alpha","LowerBound", 0.2,"UpperBound",5);
 % cost
 % fprintf('Initial point'); 
 % delete(h_Sc); 
-% delete([handles.FluoroLocalizer.hS_fluoro, handles.FluoroLocalizer.hS_stransparent]); 
+% delete([handles.FluoroLocalizer.hS_fluoro]); 
 % % % -------- test initial value--------
 
 
@@ -2284,7 +2296,7 @@ p.affinetransmat = affinetransmat;
 handles = plot_image_3d_space(hObject, eventdata, handles, affinetransmat); 
 set(handles.ax1, 'CameraPosition', p.cam_pos(1:3))
 set(handles.ax1, 'CameraTarget', p.cam_target(1:3))
-set(handles.ax1, 'CameraUpVector', [0, 0, 1]); 
+set(handles.ax1, 'CameraUpVector', affinetransmat(1:3,1:3)*[0; 0; 1]); 
 
 h_validate = gobjects(); 
 h_validate(1) = scatter3(p.landmarks_fluoro(1,:), ...
@@ -2317,6 +2329,7 @@ switch answer
         % continue
     case "Stop search and save results"
         save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
+
         lm_matched.sol_landmarks_recon_proj = p.landmarks_recon_proj';
         lm_matched.sol_landmarks_fluoro = p.landmarks_fluoro';
         lm_matched.sol_dist = dist;
@@ -2324,25 +2337,90 @@ switch answer
             handles.FluoroLocalizer.OptimizationSolutionFileName, ...
             'Delimiter', '\t', 'FileType', 'text');
         fprintf('Optimization finished\n');
+        
+        handles = validate_camera(hObject, eventdata, handles); 
+        break
+    case "Cancel"
+        delete(h_validate);
+        break
+end
+delete(h_validate); 
+
+
+end
+
+
+function handles = validate_camera(hObject, eventdata, handles)
+
+i.cam_pos = [get(handles.ax1, 'CameraPosition')'; 1];
+i.cam_target = [get(handles.ax1, 'CameraTarget')'; 1];
+i.cam_upvec = [get(handles.ax1, 'CameraUpVector')'; 1];
+
+i.rotmat = cam2rigidtransmat(i.cam_pos(1:3), i.cam_target(1:3), i.cam_upvec(1:3));
+i.pyr = rotmat2angles(i.rotmat(1:3, 1:3));
+
+alpha = 1;
+% [cost, p, affinetransmat, dist] = projection_cost_fcn(i.pyr(1), i.pyr(2), i.pyr(3), i.rotmat(1, 4), i.rotmat(1, 4), i.rotmat(1, 4), alpha, h);
+% [cost, p, rigidtransmat] = projection_cost_fcn(pitch, yaw, roll, tx, ty, tz, alpha, h);
+
+lm = handles.FluoroLocalizer.Landmarks; 
+lm = lm(lm.coordframe=="fluoro", :);
+pts = lm.pos'; 
+lm.sol_pos = (i.rotmat*padarray(pts, [1 0], 1, 'post'))'; 
+
+% p.affinetransmat = affinetransmat;
+% handles = plot_image_3d_space(hObject, eventdata, handles, affinetransmat);
+% set(handles.ax1, 'CameraPosition', p.cam_pos(1:3))
+% set(handles.ax1, 'CameraTarget', p.cam_target(1:3))
+% set(handles.ax1, 'CameraUpVector', affinetransmat(1:3,1:3)*[0; 0; 1]);
+
+handles = plot_image_3d_space(hObject, eventdata, handles, i.rotmat); 
+
+h_validate = gobjects();
+h_validate(1) = scatter3(lm.sol_pos(:,1), ...
+        lm.sol_pos(:, 2), ...
+        lm.sol_pos(:, 3), 100, 'green', 'filled');
+
+% h_validate(end+1) = scatter3(p.landmarks_recon_proj(1,:), ...
+%     p.landmarks_recon_proj(2,:), ...
+%     p.landmarks_recon_proj(3,:), 100, 'filled', 'MarkerFaceColor', "#7E2F8E");
+% 
+% npts = size(p.landmarks_recon_proj, 2);
+% cam = repmat(p.cam_pos, [1 npts]);
+% h_validate(end+1:end+npts) = plot3([cam(1, :); p.landmarks_recon_proj(1, :)], ...
+%     [cam(2, :); p.landmarks_recon_proj(2, :)], ...
+%     [cam(3, :); p.landmarks_recon_proj(3, :)], 'color', "#7E2F8E", 'linewidth', 2);
+
+handles.FluoroLocalizer.h_validate = h_validate(); guidata(hObject, handles);
+
+sol
+cost
+dist
+perm_idx
+drawnow; shg;
+
+answer = questdlg('Save?', '', ...
+    'Save', "Don't save and clear", 'Cancel', ...
+    'Continue searching');
+switch answer
+    case "Save"
+        % continue
+    case "Don't save and clear"
+        save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
 
         % save fluoro positions 
         lm = handles.FluoroLocalizer.Landmarks;
         lm.sol_pos = (affinetransmat*[lm.pos'; ones([1 width(lm.pos')])])';
         lm.sol_pos = lm.sol_pos(:, 1:3); 
         handles.FluoroLocalizer.Landmarks = lm;
-        guidata(hObject, handles)
-        break
+        guidata(hObject, handles); 
+
     case "Cancel"
         delete(h_validate);
         break
 end
-
 delete(h_validate); 
 
-
-end
-
- 
 
 
 
@@ -2364,8 +2442,10 @@ bt_ResetCamera_Callback(hObject, eventdata, handles)
 
 bt_SaveCamera_Callback(hObject, eventdata, handles)
 
+validate_camera(hObject, eventdata, handles)
 
-plot_image_3d_space(hObject, eventdata, handles, [])
+R = cam2rigidtransmat(get(handles.ax1, 'CameraPosition'), get(handles.ax1, 'CameraTarget'), get(handles.ax1, 'CameraUpVector')); 
+plot_image_3d_space(hObject, eventdata, handles, R); 
 % % plot circle to ensure estimate of fluoro field of view radius is correct
 % xo = 0; yo = 0; 
 % th = 0:pi/50:2*pi;
@@ -2424,10 +2504,10 @@ function mn_ExportFluoroLandmarks_Callback(hObject, eventdata, handles)
 % hObject    handle to mn_ExportFluoroLandmarks (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% ----- write landmarks
-lm_tbl_fname = handles.FluoroLocalizer.LandmarksFileName; 
-lm = handles.FluoroLocalizer.Landmarks; 
-writetable(lm, lm_tbl_fname, 'Delimiter', '\t', 'FileType', 'text'); 
+% 
+% % ----- write landmarks
+% lm_tbl_fname = handles.FluoroLocalizer.LandmarksFileName; 
+% lm = handles.FluoroLocalizer.Landmarks; 
+% writetable(lm, lm_tbl_fname, 'Delimiter', '\t', 'FileType', 'text'); 
 
 
