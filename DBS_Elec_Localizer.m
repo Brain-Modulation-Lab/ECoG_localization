@@ -2290,30 +2290,13 @@ show(problem);
 % T = [T        [sol.tx; sol.ty; sol.tz]; 
 %      0 0 0     1];
 
-[cost, p, affinetransmat, dist] = projection_cost_fcn(sol.pitch, sol.yaw, sol.roll, sol.tx, sol.ty, sol.tz, sol.alpha, h);
+[cost, p, affinetransmat, dist] = projection_cost_fcn(sol.pitch, sol.yaw, sol.roll, sol.tx, sol.ty, sol.tz, alpha, h);
 % [cost, p, rigidtransmat] = projection_cost_fcn(pitch, yaw, roll, tx, ty, tz, alpha, h);
-p.affinetransmat = affinetransmat;
-handles = plot_image_3d_space(hObject, eventdata, handles, affinetransmat); 
 set(handles.ax1, 'CameraPosition', p.cam_pos(1:3))
 set(handles.ax1, 'CameraTarget', p.cam_target(1:3))
 set(handles.ax1, 'CameraUpVector', affinetransmat(1:3,1:3)*[0; 0; 1]); 
 
-h_validate = gobjects(); 
-h_validate(1) = scatter3(p.landmarks_fluoro(1,:), ...
-                         p.landmarks_fluoro(2,:), ... 
-                         p.landmarks_fluoro(3,:), 100, 'green', 'filled'); 
-
-h_validate(end+1) = scatter3(p.landmarks_recon_proj(1,:), ...
-                             p.landmarks_recon_proj(2,:), ...
-                             p.landmarks_recon_proj(3,:), 100, 'filled', 'MarkerFaceColor', "#7E2F8E"); 
-
-npts = size(p.landmarks_recon_proj, 2); 
-cam = repmat(p.cam_pos, [1 npts]);
-h_validate(end+1:end+npts) = plot3([cam(1, :); p.landmarks_recon_proj(1, :)], ...
-                                   [cam(2, :); p.landmarks_recon_proj(2, :)], ...
-                                   [cam(3, :); p.landmarks_recon_proj(3, :)], 'color', "#7E2F8E", 'linewidth', 2); 
-
-handles.FluoroLocalizer.h_validate = h_validate(); guidata(hObject, handles);
+[handles, answer] = validate_camera(hObject, eventdata, handles);
 
 sol
 cost
@@ -2321,13 +2304,8 @@ dist
 perm_idx
 drawnow; shg; 
 
-answer = questdlg('Continue searching?', '', ...
-    'Continue searching', 'Stop search and save results', 'Cancel', ...
-    'Continue searching');
 switch answer
-    case "Continue searching"
-        % continue
-    case "Stop search and save results"
+    case "Save"
         save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
 
         lm_matched.sol_landmarks_recon_proj = p.landmarks_recon_proj';
@@ -2338,19 +2316,18 @@ switch answer
             'Delimiter', '\t', 'FileType', 'text');
         fprintf('Optimization finished\n');
         
-        handles = validate_camera(hObject, eventdata, handles); 
         break
-    case "Cancel"
-        delete(h_validate);
-        break
-end
-delete(h_validate); 
-
-
+    case "No"
+        % nothing, continue
+    otherwise
+        % nothing, continue 
 end
 
 
-function handles = validate_camera(hObject, eventdata, handles)
+end
+
+
+function [handles, answer] = validate_camera(hObject, eventdata, handles)
 
 i.cam_pos = [get(handles.ax1, 'CameraPosition')'; 1];
 i.cam_target = [get(handles.ax1, 'CameraTarget')'; 1];
@@ -2359,14 +2336,27 @@ i.cam_upvec = [get(handles.ax1, 'CameraUpVector')'; 1];
 i.rotmat = cam2rigidtransmat(i.cam_pos(1:3), i.cam_target(1:3), i.cam_upvec(1:3));
 i.pyr = rotmat2angles(i.rotmat(1:3, 1:3));
 
-alpha = 1;
 % [cost, p, affinetransmat, dist] = projection_cost_fcn(i.pyr(1), i.pyr(2), i.pyr(3), i.rotmat(1, 4), i.rotmat(1, 4), i.rotmat(1, 4), alpha, h);
 % [cost, p, rigidtransmat] = projection_cost_fcn(pitch, yaw, roll, tx, ty, tz, alpha, h);
 
 lm = handles.FluoroLocalizer.Landmarks; 
-lm = lm(lm.coordframe=="fluoro", :);
-pts = lm.pos'; 
-lm.sol_pos = (i.rotmat*padarray(pts, [1 0], 1, 'post'))'; 
+lm_fluoro = lm(lm.coordframe=="fluoro", :);
+pts = lm_fluoro.pos'; 
+lm_fluoro.sol_pos = (i.rotmat*padarray(pts, [1 0], 1, 'post'))'; 
+lm_fluoro.sol_pos = lm_fluoro.sol_pos(:, 1:3); 
+
+% find intersection of current camera angle, projected through recon, onto
+% fluoro
+lm_recon = lm(lm.coordframe=="recon", :);
+lm_recon.sol_pos = nan([height(lm_recon), 3]); 
+for ip = 1:height(lm_recon)
+lm_recon.sol_pos(ip, :) = line_plane_intersection(lm_recon.pos(ip, :)' - i.cam_pos(1:3), ...
+                                            i.cam_pos(1:3), ...                          
+                                            i.cam_target(1:3)-i.cam_pos(1:3), ... % norm
+                                            lm_fluoro.sol_pos(1, 1:3)'); % any point on the fluoro
+end
+
+lm = [lm_recon; lm_fluoro]; 
 
 % p.affinetransmat = affinetransmat;
 % handles = plot_image_3d_space(hObject, eventdata, handles, affinetransmat);
@@ -2393,33 +2383,19 @@ h_validate(1) = scatter3(lm.sol_pos(:,1), ...
 
 handles.FluoroLocalizer.h_validate = h_validate(); guidata(hObject, handles);
 
-sol
-cost
-dist
-perm_idx
 drawnow; shg;
 
-answer = questdlg('Save?', '', ...
-    'Save', "Don't save and clear", 'Cancel', ...
-    'Continue searching');
+answer = questdlg('Save landmarks table with current camera view?', '', ...
+    'Save', "No", 'No');
 switch answer
-    case "Save"
-        % continue
-    case "Don't save and clear"
-        save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
-
-        % save fluoro positions 
-        lm = handles.FluoroLocalizer.Landmarks;
-        lm.sol_pos = (affinetransmat*[lm.pos'; ones([1 width(lm.pos')])])';
-        lm.sol_pos = lm.sol_pos(:, 1:3); 
+    case "Update landmarks table"
+%         save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
         handles.FluoroLocalizer.Landmarks = lm;
         guidata(hObject, handles); 
-
-    case "Cancel"
+    case "No"
         delete(h_validate);
-        break
 end
-delete(h_validate); 
+
 
 
 
