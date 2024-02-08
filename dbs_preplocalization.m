@@ -15,8 +15,8 @@ if ~exist([char(options.uifsdir) '/Electrode_Locations'])
 end
 
 %%%%%%%%%%%% Cortex %%%%%%%%%%%%%%
-[cortex.vert_lh,cortex.tri_lh]= read_surf(fullfile(fsdirectory,'surf/lh.pial')); % Reading left side pial surface
-[cortex.vert_rh,cortex.tri_rh]= read_surf(fullfile(fsdirectory,'surf/rh.pial')); % Reading right side pial surface
+[cortex.vert_lh,cortex.tri_lh]= read_surf(fullfile(fsdirectory,'surf/lh.pial.T1')); % Reading left side pial surface
+[cortex.vert_rh,cortex.tri_rh]= read_surf(fullfile(fsdirectory,'surf/rh.pial.T1')); % Reading right side pial surface
 
 % Generating entire cortex
 cortex.vert = [cortex.vert_lh; cortex.vert_rh]; % Combining both hemispheres
@@ -40,6 +40,9 @@ save(fullfile(fsdirectory,'cortex_indiv.mat'),'cortex');
 % Skull
 % Get Mesh
 % AB edit 2019/02/21
+% PLB edit 2024 02 02 we are creating the skull reconstruction with
+% isosurface() and saving to freesurfer/skull.mat in a previous step, 
+% so this is unnecessary
 
 %loading skull
 [fname,pathname,extension] = dbs_uigetfile(fsdirectory,'Choose Skull Mesh .obj');
@@ -110,6 +113,10 @@ save(fullfile(fsdirectory,'ct_reg','skull.mat'),'skull')
 %     end
 % else
 % end
+
+
+
+
 
 % Create cortical hull
 grayfilename = [char(options.uifsdir) '/mri/t1_class.nii'];

@@ -96,9 +96,9 @@ handles.FluoroLocalizer.fov_radius = 114; % fixed radius of fluoro in mm
 handles.FluoroLocalizer.Landmarks = table();
 handles.FluoroLocalizer.LandmarksFileName = ['./sub-' handles.SubjectID '_fluoro-landmarks.tsv'];
 handles.FluoroLocalizer.LandmarksNames = {'pintip_front', 'pintip_occ', 'dbslead_bottom', 'dbslead_top'};
-handles.FluoroLocalizer.OptimizationSolutionFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.tsv'];
-handles.FluoroLocalizer.OptimizationSolutionMATFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.mat'];
-handles.FluoroLocalizer.OptimizationSolutionElectrodesFileName = ['./sub-' handles.SubjectID '_optimized-electrodes.tsv'];
+% handles.FluoroLocalizer.OptimizationSolutionFileName = ['./sub-' handles.SubjectID '_optimized-camera-solution.tsv'];
+handles.FluoroLocalizer.OptimizationSolutionMATFileName = ['./sub-' handles.SubjectID '_eleclocalizer-camera-optimization-solution.mat'];
+handles.FluoroLocalizer.OptimizationSolutionElectrodesFileName = ['./sub-' handles.SubjectID '_eleclocalizer-all-landmarks-final.tsv'];
 
 
 set(handles.ed_Cmd,'KeyReleaseFcn',@CmdKeyRelease)
@@ -404,9 +404,9 @@ if strcmp(get(gcf,'SelectionType'), 'normal') %add contact on left click
 
         %     pos1=[linspace(pos(1,1),pos(2,1),5000)', linspace(pos(1,2),pos(2,2),5000)', linspace(pos(1,3),pos(2,3),5000)'];
         dst = single(pdist2(vert,pos1));
-        mi = find(min(dst,[],2)<dthr); %Find vertices within dthr of our line
+        mi = (min(dst,[],2)<dthr); %Find vertices within dthr of our line
         vert2 = vert(mi,:);
-        [~,mi2] = max(abs(vert2(:,1)));
+        [~,mi2] = max(abs(vert2(:,1))); % find the more lateral intersection
         epos = vert2(mi2,:);
 
 
@@ -767,11 +767,12 @@ CortElecLoc=handles.CortLocalizer.ElecLocCort;
 % [fname, pname] = uiputfile('*.mat', 'Export Electrode Locs to:');
 % save(fullfile(pname,fname),'CortElecLoc')
 
+mn_SaveCamera_Callback(hObject, eventdata, handles);
 
 % ----- write landmarks
 lm_tbl_fname = handles.FluoroLocalizer.OptimizationSolutionElectrodesFileName; 
 lm = handles.FluoroLocalizer.Landmarks; 
-lm = lm(lm.coordframe=="recon", :);
+% lm = lm(lm.coordframe=="recon", :);
 writetable(lm, lm_tbl_fname, 'Delimiter', '\t', 'FileType', 'text'); 
 f = msgbox("Saved successfully!");
 
@@ -2226,8 +2227,8 @@ roll = optimvar("roll","LowerBound",-range_rot,"UpperBound",range_rot);
 tx = optimvar("tx","LowerBound",-range_trans,"UpperBound",range_trans);
 ty = optimvar("ty","LowerBound",-range_trans,"UpperBound",range_trans);
 tz = optimvar("tz","LowerBound",-range_trans,"UpperBound",range_trans);
-% alpha = optimvar("alpha","LowerBound", 0.8,"UpperBound",1.2);
-alpha = 1; 
+alpha = optimvar("alpha","LowerBound", 0.8,"UpperBound",1.2);
+% alpha = 1; 
 
 
 % % % -------- test initial value--------
@@ -2290,7 +2291,7 @@ show(problem);
 % T = [T        [sol.tx; sol.ty; sol.tz]; 
 %      0 0 0     1];
 
-[cost, p, affinetransmat, dist] = projection_cost_fcn(sol.pitch, sol.yaw, sol.roll, sol.tx, sol.ty, sol.tz, alpha, h);
+[cost, p, affinetransmat, dist] = projection_cost_fcn(sol.pitch, sol.yaw, sol.roll, sol.tx, sol.ty, sol.tz, sol.alpha, h);
 % [cost, p, rigidtransmat] = projection_cost_fcn(pitch, yaw, roll, tx, ty, tz, alpha, h);
 set(handles.ax1, 'CameraPosition', p.cam_pos(1:3))
 set(handles.ax1, 'CameraTarget', p.cam_target(1:3))
@@ -2307,20 +2308,23 @@ drawnow; shg;
 switch answer
     case "Save"
         save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
-
-        lm_matched.sol_landmarks_recon_proj = p.landmarks_recon_proj';
-        lm_matched.sol_landmarks_fluoro = p.landmarks_fluoro';
-        lm_matched.sol_dist = dist;
-        writetable(lm_matched, ...
-            handles.FluoroLocalizer.OptimizationSolutionFileName, ...
-            'Delimiter', '\t', 'FileType', 'text');
+%         lm_matched.sol_landmarks_recon_proj = p.landmarks_recon_proj';
+%         lm_matched.sol_landmarks_fluoro = p.landmarks_fluoro';
+%         lm_matched.sol_dist = dist;
+%         writetable(lm_matched, ...
+%             handles.FluoroLocalizer.OptimizationSolutionFileName, ...
+%             'Delimiter', '\t', 'FileType', 'text');
+        
+        
         fprintf('Optimization finished\n');
         
         break
     case "No"
         % nothing, continue
+    case "Cancel search"
+        break
     otherwise
-        % nothing, continue 
+        error('Answer not recognized') 
 end
 
 
@@ -2381,22 +2385,27 @@ h_validate(1) = scatter3(lm.sol_pos(:,1), ...
 %     [cam(2, :); p.landmarks_recon_proj(2, :)], ...
 %     [cam(3, :); p.landmarks_recon_proj(3, :)], 'color', "#7E2F8E", 'linewidth', 2);
 
-handles.FluoroLocalizer.h_validate = h_validate(); guidata(hObject, handles);
-
+handles.FluoroLocalizer.h_validate = h_validate; guidata(hObject, handles);
+%     
 drawnow; shg;
 
 answer = questdlg('Save landmarks table with current camera view?', '', ...
-    'Save', "No", 'No');
+    'Save', "No", "Cancel search", 'No');
 switch answer
-    case "Update landmarks table"
+    case "Save"
 %         save(handles.FluoroLocalizer.OptimizationSolutionMATFileName, 'sol', 'cost', "dist", 'h', 'i', 'p', 'lm_matched');
         handles.FluoroLocalizer.Landmarks = lm;
         guidata(hObject, handles); 
+
+%         mn_SaveCamera_Callback(hObject, eventdata, handles);
+
     case "No"
+        delete(h_validate);
+    case "Cancel search"
         delete(h_validate);
 end
 
-
+guidata(hObject, handles)
 
 
 
@@ -2418,7 +2427,7 @@ bt_ResetCamera_Callback(hObject, eventdata, handles)
 
 bt_SaveCamera_Callback(hObject, eventdata, handles)
 
-validate_camera(hObject, eventdata, handles)
+handles = validate_camera(hObject, eventdata, handles);
 
 R = cam2rigidtransmat(get(handles.ax1, 'CameraPosition'), get(handles.ax1, 'CameraTarget'), get(handles.ax1, 'CameraUpVector')); 
 plot_image_3d_space(hObject, eventdata, handles, R); 
