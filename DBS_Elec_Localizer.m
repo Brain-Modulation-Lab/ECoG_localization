@@ -91,6 +91,7 @@ handles.Nudge.ScaleMax=20;
 handles.FluoroLocalizer.Status1=0;
 handles.FluoroLocalizer.emitter2nose = 650; % default distance from  mm from nose to screen
 handles.FluoroLocalizer.emitter2screen = 780; % fixed distance from  mm from emitter to screen
+handles.FluoroLocalizer.emitterSide = 'left'; % left or right side? 
 handles.FluoroLocalizer.width = 244; % fixed width of fluoro in mm
 handles.FluoroLocalizer.fov_radius = 114; % fixed radius of fluoro in mm
 handles.FluoroLocalizer.Landmarks = table();
@@ -217,15 +218,18 @@ dlgtitle = '';
 fieldsize = [1 45];
 definput = {'670'};
 answer = inputdlg(prompt,dlgtitle,fieldsize,definput); 
-answer = str2num(answer{1}); 
-handles.FluoroLocalizer.emitter2nose = answer; 
+handles.FluoroLocalizer.emitter2nose = str2num(answer{1}); 
 
-handles.Camera.cp = [-handles.FluoroLocalizer.emitter2nose, 0, 0];
+answer = questdlg('Fluoro emitter/camera side?', '', ...
+    'left', "right", 'left');
+handles.FluoroLocalizer.emitterSide = string(answer); 
+
+flip = double(handles.FluoroLocalizer.emitterSide=="left")*2-1; 
+handles.Camera.cp = [-1*flip*handles.FluoroLocalizer.emitter2nose, 0, 0];
 handles.Camera.ct = [0, 0, 0];
 handles.Camera.cva = 20;
 handles.Camera.uv = [0, 0, 1]; 
 bt_ResetCamera_Callback(hObject, eventdata, handles);
-
 
 
 opts = detectImportOptions(handles.FluoroLocalizer.LandmarksFileName, 'FileType', 'text');
@@ -246,6 +250,7 @@ lm(:, {'pos_1', 'pos_2'}) = [];
 
 % project landmarks according to offset distance and fluoro width
 scale = eye(3)*(handles.FluoroLocalizer.width/2);
+% flip = double(handles.FluoroLocalizer.emitterSide=="left")*2-1; 
 translate = [1; 0; 0]*(handles.FluoroLocalizer.emitter2screen - handles.FluoroLocalizer.emitter2nose);
 R = [scale translate; 
     0 0 0  1        ];
@@ -1726,8 +1731,8 @@ hold on;
 if isfield(handles.FluoroLocalizer, 'hS_fluoro'); delete(handles.FluoroLocalizer.hS_fluoro); end
 if isfield(handles.FluoroLocalizer, 'hS_transparent'); delete(handles.FluoroLocalizer.hS_transparent); end
 
-xoff = handles.FluoroLocalizer.emitter2screen - ...
-       handles.FluoroLocalizer.emitter2nose; 
+% flip = double(handles.FluoroLocalizer.emitterSide=="left")*2-1; 
+xoff = (handles.FluoroLocalizer.emitter2screen - handles.FluoroLocalizer.emitter2nose); 
 width = handles.FluoroLocalizer.width; 
 
 corners = [
@@ -2200,8 +2205,9 @@ fluoro_depth = handles.FluoroLocalizer.emitter2screen - ...
                handles.FluoroLocalizer.emitter2nose; % distance from camtarget to fluoro
 h.fluoro_norm = (h.cam_target - h.cam_pos); 
 h.fluoro_norm = h.fluoro_norm/norm(h.fluoro_norm);
-h.fluoro_origin = h.fluoro_norm*fluoro_depth - h.cam_target; 
 h.fluoro_norm(4) = 0; % don't translate normal vector to plane
+% flip = double(handles.FluoroLocalizer.emitterSide=="left")*2-1; 
+h.fluoro_origin = (h.fluoro_norm*fluoro_depth - h.cam_target); 
 h.fluoro_origin(4) = 1; 
 
 % used in calculating distance for landmarks NOT in fluoro field of view 
@@ -2221,9 +2227,9 @@ i.pyr = rotmat2angles(i.rotmat(1:3, 1:3));
 % Set parameters ranges for the optimization
 range_rot = 2; 
 range_trans = 100; 
-pitch = optimvar("pitch","LowerBound",-range_rot,"UpperBound",range_rot);
-yaw = optimvar("yaw","LowerBound",-range_rot,"UpperBound", range_rot);
-roll = optimvar("roll","LowerBound",-range_rot,"UpperBound",range_rot);
+pitch = optimvar("pitch","LowerBound",i.pyr(1)-range_rot,"UpperBound",i.pyr(1)+range_rot);
+yaw = optimvar("yaw","LowerBound",i.pyr(2)-range_rot,"UpperBound", i.pyr(2)+range_rot);
+roll = optimvar("roll","LowerBound",i.pyr(3)-range_rot,"UpperBound",i.pyr(3)+range_rot);
 tx = optimvar("tx","LowerBound",-range_trans,"UpperBound",range_trans);
 ty = optimvar("ty","LowerBound",-range_trans,"UpperBound",range_trans);
 tz = optimvar("tz","LowerBound",-range_trans,"UpperBound",range_trans);
@@ -2418,8 +2424,8 @@ function pushbutton21_Callback(hObject, eventdata, handles)
 
 sfprintf('testing/debug here')
 
-
-handles.Camera.cp = [-handles.FluoroLocalizer.emitter2nose, 0, 0];
+flip = double(handles.FluoroLocalizer.emitterSide=="left")*2-1; 
+handles.Camera.cp = [-1*flip*handles.FluoroLocalizer.emitter2nose, 0, 0];
 handles.Camera.ct = [0, 0, 0];
 handles.Camera.cva = 20;
 handles.Camera.uv = [0, 0, 1]; 
@@ -2427,7 +2433,11 @@ bt_ResetCamera_Callback(hObject, eventdata, handles)
 
 bt_SaveCamera_Callback(hObject, eventdata, handles)
 
+
+
 handles = validate_camera(hObject, eventdata, handles);
+
+
 
 R = cam2rigidtransmat(get(handles.ax1, 'CameraPosition'), get(handles.ax1, 'CameraTarget'), get(handles.ax1, 'CameraUpVector')); 
 plot_image_3d_space(hObject, eventdata, handles, R); 
