@@ -44,24 +44,24 @@ save(fullfile(fsdirectory,'cortex_indiv.mat'),'cortex');
 % isosurface() and saving to freesurfer/skull.mat in a previous step, 
 % so this is unnecessary
 
-%loading skull
-[fname,pathname,extension] = dbs_uigetfile(fsdirectory,'Choose Skull Mesh .obj');
-[skull.vert,skull.tri] = dbs_getskullobj([pathname filesep fname extension]);
-
-%conforming to cortex structure
-if exist('skull')
-    if isfield(skull,'faces'), skull.tri=skull.faces; end
-elseif exist('skin')
-    skull=skin; clear skin
-    if isfield(skull,'faces'), skull.tri=skull.faces; end
-end
-s=size(skull.vert);
-if s(1)<s(2), skull.vert=skull.vert'; end
-s=size(skull.tri);
-if s(1)<s(2), skull.tri=skull.tri'; end
-
-a=[-1,0,0;0,-1,0;0,0,1];
-skull.vert = [skull.vert*a];
+% %loading skull
+% [fname,pathname,extension] = dbs_uigetfile(fsdirectory,'Choose Skull Mesh .obj');
+% [skull.vert,skull.tri] = dbs_getskullobj([pathname filesep fname extension]);
+% 
+% %conforming to cortex structure
+% if exist('skull')
+%     if isfield(skull,'faces'), skull.tri=skull.faces; end
+% elseif exist('skin')
+%     skull=skin; clear skin
+%     if isfield(skull,'faces'), skull.tri=skull.faces; end
+% end
+% s=size(skull.vert);
+% if s(1)<s(2), skull.vert=skull.vert'; end
+% s=size(skull.tri);
+% if s(1)<s(2), skull.tri=skull.tri'; end
+% 
+% a=[-1,0,0;0,-1,0;0,0,1];
+% skull.vert = [skull.vert*a];
 
 % figure;
 % Hp = patch('Vertices',cortex.vert,'Faces',cortex.tri,...
@@ -94,12 +94,12 @@ skull.vert = [skull.vert*a];
 % skull.vert = skull.vert';
 % skull.tri = skull.tri';
 
-if ~exist(fullfile(fsdirectory,'ct_reg'))
-    mkdir(fullfile(fsdirectory,'ct_reg'))
-else
-end
-disp(['saving    ' fullfile(fsdirectory,'ct_reg','skull.mat') ' .......'])
-save(fullfile(fsdirectory,'ct_reg','skull.mat'),'skull')
+% if ~exist(fullfile(fsdirectory,'ct_reg'))
+%     mkdir(fullfile(fsdirectory,'ct_reg'))
+% else
+% end
+% disp(['saving    ' fullfile(fsdirectory,'ct_reg','skull.mat') ' .......'])
+% save(fullfile(fsdirectory,'ct_reg','skull.mat'),'skull')
 
 % Option to prevent overwriting:
 % if ~exist(fullfile(directory,fname))

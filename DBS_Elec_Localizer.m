@@ -3,7 +3,7 @@ function varargout = DBS_Elec_Localizer(varargin)
 
 % Edit the above text to modify the response to help DBS_Elec_Localizer
 
-% Last Modified by GUIDE v2.5 04-Jan-2024 15:32:35
+% Last Modified by GUIDE v2.5 16-Feb-2024 18:45:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1544,26 +1544,26 @@ els_dir = folders(~cellfun(@isempty,strfind(folders,'lectrode')));
 load([fsroot, filesep, 'cortex_indiv.mat']) % cortex_indiv.mat
 load([fsroot, filesep, cell2mat(files(~cellfun(@isempty,strfind(files,'hull'))))])
 try
-load(fullfile(fsroot,'CT_reg','skull.mat'))
+load(fullfile(ptroot,'CT_reg','skull.mat'))
 catch
-load(fullfile(fsroot,'skull.mat'))
+load(fullfile(ptroot,'skull.mat'))
 end
 
 try
 % load(char(fullfile(els_dir,els_files(~cellfun(@isempty,strfind(els_files,'electrodes'))))))
-load(fullfile(fsroot, 'Electrode_Locations', 'depthelectrodes.mat'))
+load(fullfile(ptroot, 'Electrode_Locations', 'depthelectrodes.mat'))
 catch
 disp('Choose Depth Electrodes')
-[depth_electrodes,elsPath,ext] = dbs_uigetfile(fsroot,'Choose Depth Electrodes');
+[depth_electrodes,elsPath,ext] = dbs_uigetfile(ptroot,'Choose Depth Electrodes');
 load(fullfile(elsPath,[depth_electrodes,ext]))
 end
 
 try
 % load(char(fullfile(els_dir,els_files(~cellfun(@isempty,strfind(els_files,'Pin'))))))
-load(fullfile(fsroot, 'Electrode_Locations', 'MRI_Fiducials.mat'))
+load(fullfile(ptroot, 'Electrode_Locations', 'MRI_Fiducials.mat'))
 catch
 disp('Choose PinTips');
-[PinTips,pinPath,ext] = dbs_uigetfile(fsroot,'Choose PinTips');
+[PinTips,pinPath,ext] = dbs_uigetfile(ptroot,'Choose PinTips');
 load(fullfile(pinPath,[PinTips,ext]))
 end
 
@@ -2451,10 +2451,7 @@ plot_image_3d_space(hObject, eventdata, handles, R);
 % h = plot3(x, y, z);
 
 
-if isfield(handles.FluoroLocalizer, 'hS_fluoro'); delete(handles.FluoroLocalizer.hS_fluoro); end
-if isfield(handles.FluoroLocalizer, 'hS_transparent'); delete(handles.FluoroLocalizer.hS_transparent); end
-
-
+c
 
 
 bt_SaveCamera_Callback(hObject, eventdata, handles);
@@ -2506,3 +2503,21 @@ function mn_ExportFluoroLandmarks_Callback(hObject, eventdata, handles)
 % writetable(lm, lm_tbl_fname, 'Delimiter', '\t', 'FileType', 'text'); 
 
 
+
+
+
+% --- Executes on button press in remove_validation.
+function remove_validation_Callback(hObject, eventdata, handles)
+% hObject    handle to remove_validation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+if isfield(handles.FluoroLocalizer, 'hS_fluoro'); delete(handles.FluoroLocalizer.hS_fluoro); end
+if isfield(handles.FluoroLocalizer, 'hS_transparent'); delete(handles.FluoroLocalizer.hS_transparent); end
+
+
+% --- Executes on button press in pushbutton24.
+function pushbutton24_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton24 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)

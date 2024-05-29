@@ -40,7 +40,7 @@ if options.striplocalize.do
     else
         cd(char(options.uipatdirs))
         save('localizer_options.mat','options')
-        cd(char(options.uifsdir))
+%         cd(char(options.uifsdir)) % commented out Latane Bullock 2024 05 28
         hGUI_dbs_elec_localizer = DBS_Elec_Localizer;
         assignin('base', 'hGUI_dbs_elec_localizer', hGUI_dbs_elec_localizer);
     end
