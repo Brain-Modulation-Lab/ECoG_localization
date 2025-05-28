@@ -18,6 +18,9 @@ end
 [cortex.vert_lh,cortex.tri_lh]= read_surf(fullfile(fsdirectory,'surf/lh.pial.T1')); % Reading left side pial surface
 [cortex.vert_rh,cortex.tri_rh]= read_surf(fullfile(fsdirectory,'surf/rh.pial.T1')); % Reading right side pial surface
 
+% [cortex.vert_lh,cortex.tri_lh]= read_surf(fullfile(fsdirectory,'surf/lh.pial')); % Reading left side pial surface
+% [cortex.vert_rh,cortex.tri_rh]= read_surf(fullfile(fsdirectory,'surf/rh.pial')); % Reading right side pial surface
+
 % Generating entire cortex
 cortex.vert = [cortex.vert_lh; cortex.vert_rh]; % Combining both hemispheres
 cortex.tri = [cortex.tri_lh; (cortex.tri_rh + length(cortex.vert_lh))]; % Combining faces (Have to add to number of faces)
@@ -26,8 +29,9 @@ cortex.tri=cortex.tri+1; % freesurfer starts at 0 for indexing
 
 % Reading in MRI parameters
 % WJL edit 06/12/2017 
-% f=MRIread(fullfile(fsdirectory,'mri/T1.mgz'));
-f=MRIread(fullfile(fsdirectory,'mri/T1.nii'));
+paths_T1 = {fullfile(fsdirectory,'mri/T1.nii'), fullfile(fsdirectory,'mri/T1.mgz')}; 
+idx = find(cellfun(@(p) exist(p, 'file'), paths_T1), 1); 
+f=MRIread(paths_T1{idx});
 
 % Translating into the appropriate space
 for k=1:size(cortex.vert,1)
